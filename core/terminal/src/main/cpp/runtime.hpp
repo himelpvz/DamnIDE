@@ -6,6 +6,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <vector>
 
 struct RuntimeState {
     JavaVM* vm = nullptr;
@@ -31,6 +32,6 @@ void emit_error(const std::string& value);
 void emit_exit(jint code);
 
 int open_pty_pair(int* master_fd, int* slave_fd);
-int start_shell_process(const std::string& rootfs_path, int master_fd, int slave_fd, pid_t* child_pid);
+int start_shell_process(const std::string& proot_binary_path, const std::vector<std::string>& proot_args, int master_fd, int slave_fd, pid_t* child_pid);
 void reader_loop();
 void stop_process_by_pid(pid_t child_pid);

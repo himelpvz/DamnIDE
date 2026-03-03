@@ -40,7 +40,12 @@ int open_pty_pair(int* master_fd, int* slave_fd) {
     return 0;
 }
 
-int start_shell_process(const std::string& rootfs_path, int master_fd, int slave_fd, pid_t* child_pid) {
+int start_shell_process(
+    const std::string& proot_binary_path,
+    const std::vector<std::string>& proot_args,
+    int master_fd,
+    int slave_fd,
+    pid_t* child_pid) {
     const pid_t pid = fork();
     if (pid < 0) {
         return -1;
@@ -57,29 +62,24 @@ int start_shell_process(const std::string& rootfs_path, int master_fd, int slave
         close(master_fd);
         close(slave_fd);
 
-        chdir(rootfs_path.c_str());
-
-        const std::string shell_path = rootfs_path + "/bin/sh";
-        const std::string home_path = rootfs_path + "/home";
+        setenv("HOME", "/root", 1);
+        setenv("TERM", "xterm-256color", 1);
+        setenv("LANG", "C.UTF-8", 1);
+        setenv("SHELL", "/bin/bash", 1);
+        setenv("TMPDIR", "/tmp", 1);
+        setenv("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", 1);
+        unsetenv("LD_PRELOAD");
+        unsetenv("LD_LIBRARY_PATH");
 
         std::vector<char*> argv;
-        argv.push_back(const_cast<char*>(shell_path.c_str()));
-        argv.push_back(const_cast<char*>("-i"));
+        argv.reserve(proot_args.size() + 2);
+        argv.push_back(const_cast<char*>(proot_binary_path.c_str()));
+        for (const auto& arg : proot_args) {
+            argv.push_back(const_cast<char*>(arg.c_str()));
+        }
         argv.push_back(nullptr);
 
-        std::vector<std::string> env_values;
-        env_values.emplace_back("HOME=" + home_path);
-        env_values.emplace_back("PATH=/usr/bin:/bin");
-        env_values.emplace_back("TERM=xterm-256color");
-        env_values.emplace_back("PWD=" + rootfs_path);
-
-        std::vector<char*> envp;
-        for (auto& value : env_values) {
-            envp.push_back(const_cast<char*>(value.c_str()));
-        }
-        envp.push_back(nullptr);
-
-        execve(shell_path.c_str(), argv.data(), envp.data());
+        execv(proot_binary_path.c_str(), argv.data());
         _exit(127);
     }
 

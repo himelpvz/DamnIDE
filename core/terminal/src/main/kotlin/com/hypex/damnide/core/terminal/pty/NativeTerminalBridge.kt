@@ -20,8 +20,8 @@ class NativeTerminalBridge {
         NativeTerminalBindings.bind(this)
     }
 
-    fun startShell(rootfsPath: String): Boolean {
-        val masterFd = NativeTerminalBindings.startShell(rootfsPath)
+    fun startShell(prootBinaryPath: String, args: List<String>): Boolean {
+        val masterFd = NativeTerminalBindings.startShell(prootBinaryPath, args.toTypedArray())
         if (masterFd < 0) return false
         val childPid = NativeTerminalBindings.childPid(masterFd)
         if (childPid <= 0) return false

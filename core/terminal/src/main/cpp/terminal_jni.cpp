@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <vector>
 
 extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
     state().vm = vm;
@@ -36,9 +37,10 @@ extern "C" JNIEXPORT jint JNICALL
 Java_com_hypex_damnide_core_terminal_pty_NativeTerminalBindings_nativeStartShell(
     JNIEnv* env,
     jobject,
-    jstring rootfs_path) {
-    if (rootfs_path == nullptr) {
-        set_last_error("rootfsPath cannot be null");
+    jstring proot_binary_path,
+    jobjectArray args) {
+    if (proot_binary_path == nullptr || args == nullptr) {
+        set_last_error("proot path and args cannot be null");
         return -1;
     }
 
@@ -46,25 +48,51 @@ Java_com_hypex_damnide_core_terminal_pty_NativeTerminalBindings_nativeStartShell
         state().reader_thread.join();
     }
 
-    std::lock_guard<std::mutex> lock(state().state_mutex);
-    if (state().running.load()) {
+    bool is_running = false;
+    {
+        std::lock_guard<std::mutex> lock(state().state_mutex);
+        is_running = state().running.load();
+    }
+    if (is_running) {
         set_last_error("Shell is already running");
         return -1;
     }
 
-    const char* path_chars = env->GetStringUTFChars(rootfs_path, nullptr);
-    if (path_chars == nullptr) {
-        set_last_error("Failed to decode rootfsPath");
+    const char* proot_chars = env->GetStringUTFChars(proot_binary_path, nullptr);
+    if (proot_chars == nullptr) {
+        set_last_error("Failed to decode prootBinaryPath");
         return -1;
     }
 
-    const std::string rootfs(path_chars);
-    env->ReleaseStringUTFChars(rootfs_path, path_chars);
+    const std::string proot_path(proot_chars);
+    env->ReleaseStringUTFChars(proot_binary_path, proot_chars);
 
-    const std::string shell_path = rootfs + "/bin/sh";
-    if (access(shell_path.c_str(), X_OK) != 0) {
-        set_last_error("Invalid rootfs: missing executable /bin/sh");
+    if (access(proot_path.c_str(), X_OK) != 0) {
+        set_last_error("Invalid proot binary path or not executable");
         return -1;
+    }
+
+    const jsize args_len = env->GetArrayLength(args);
+    std::vector<std::string> proot_args;
+    proot_args.reserve(static_cast<size_t>(args_len));
+
+    for (jsize i = 0; i < args_len; ++i) {
+        auto* arg_obj = static_cast<jstring>(env->GetObjectArrayElement(args, i));
+        if (arg_obj == nullptr) {
+            set_last_error("Proot args cannot contain null values");
+            return -1;
+        }
+
+        const char* arg_chars = env->GetStringUTFChars(arg_obj, nullptr);
+        if (arg_chars == nullptr) {
+            env->DeleteLocalRef(arg_obj);
+            set_last_error("Failed to decode proot arg");
+            return -1;
+        }
+
+        proot_args.emplace_back(arg_chars);
+        env->ReleaseStringUTFChars(arg_obj, arg_chars);
+        env->DeleteLocalRef(arg_obj);
     }
 
     int master_fd = -1;
@@ -75,7 +103,7 @@ Java_com_hypex_damnide_core_terminal_pty_NativeTerminalBindings_nativeStartShell
     }
 
     pid_t pid = -1;
-    if (start_shell_process(rootfs, master_fd, slave_fd, &pid) < 0) {
+    if (start_shell_process(proot_path, proot_args, master_fd, slave_fd, &pid) < 0) {
         close(master_fd);
         close(slave_fd);
         set_last_error(std::string("fork failed: ") + std::strerror(errno));
