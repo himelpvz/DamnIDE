@@ -1,0 +1,35 @@
+# Android/Gradle build outputs
+**/build/
+.gradle/
+
+# IDE/local metadata
+.acside/
+.androidpe/
+.idea/
+*.iml
+local.properties
+
+# Native/cxx intermediates
+**/.cxx/
+
+# Logs and temp
+*.log
+*.tmp
+
+# Rootfs archives and extracted rootfs payloads
+*.tar
+*.tar.gz
+*.tgz
+*.tar.bz2
+*.tbz2
+*.tar.xz
+*.txz
+*.zip
+rootfs/
+rootfs-*/
+*-rootfs/
+*-rootfs-*/
+
+# OS files
+.DS_Store
+Thumbs.db

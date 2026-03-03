@@ -1,0 +1,138 @@
+{
+  "role": "system",
+  "title": "Build Production-Ready Android Terminal Module (User-Provided RootFS)",
+  "description": "Create a modular, production-grade terminal system for a native Android IDE using Kotlin, Jetpack Compose, and C++ (NDK). The user supplies their own Linux rootfs.",
+  "tech_stack": {
+    "language": ["Kotlin", "C++"],
+    "ui": "Jetpack Compose",
+    "native": "Android NDK",
+    "async": "Kotlin Coroutines",
+    "bridge": "JNI",
+    "architecture": "Clean Architecture + MVVM"
+  },
+  "project_structure": {
+    "root": {
+      "app": "Contains MainActivity only. No business logic.",
+      "core": {
+        "terminal": {
+          "ui": "Compose UI components",
+          "viewmodel": "TerminalViewModel",
+          "runtime": "Runtime abstraction layer",
+          "pty": "JNI + C++ PTY bridge",
+          "model": "State models"
+        },
+        "common": "Shared utilities",
+        "utils": "Helper classes"
+      }
+    }
+  },
+  "constraints": [
+    "All terminal logic must live in core/terminal",
+    "App module must only launch TerminalScreen()",
+    "No terminal business logic inside app module",
+    "No WebView usage",
+    "Production-level code only",
+    "Design must allow future IDE expansion"
+  ],
+  "runtime_model": {
+    "rootfs_source": "User provided",
+    "selection_method": "Storage Access Framework (SAF)",
+    "requirements": [
+      "Persist URI permission",
+      "Validate rootfs structure (/bin, /usr, /lib)",
+      "Graceful failure if invalid",
+      "No bundled rootfs"
+    ]
+  },
+  "pty_requirements": {
+    "language": "C++",
+    "functions": ["openpty()", "fork()", "setsid()", "dup2()", "execve()"],
+    "shell_path": "<rootfs>/bin/sh",
+    "environment": {
+      "HOME": "<rootfs>/home",
+      "PATH": "/usr/bin:/bin",
+      "TERM": "xterm-256color"
+    },
+    "jni_interface": {
+      "startShell": "startShell(rootfsPath: String): Boolean",
+      "write": "writeToShell(input: String)",
+      "observe": "observeOutput(): Flow<String>",
+      "resize": "resize(cols: Int, rows: Int)",
+      "stop": "stopShell()"
+    },
+    "requirements": [
+      "Non-blocking IO",
+      "Thread-safe pipe reading",
+      "Proper error handling",
+      "Graceful cleanup"
+    ]
+  },
+  "runtime_layer": {
+    "interface": "TerminalRuntime",
+    "methods": ["start(rootfsPath: String)", "stop()"],
+    "implementation": "LocalRootfsRuntime",
+    "responsibilities": [
+      "Path resolution",
+      "Working directory binding",
+      "Environment preparation",
+      "Future container isolation support"
+    ]
+  },
+  "ui_requirements": {
+    "style": "VS Code-like",
+    "theme": "Dark",
+    "font": "Monospace",
+    "layout": [
+      "Top bar with session name",
+      "Rootfs path indicator",
+      "Full-screen terminal body"
+    ],
+    "features": [
+      "ANSI escape parsing",
+      "256-color support",
+      "Scrollback buffer",
+      "Cursor rendering",
+      "Soft keyboard support",
+      "Hardware keyboard support",
+      "Edge-to-edge layout"
+    ],
+    "rendering": "Canvas or custom Compose renderer"
+  },
+  "architecture": {
+    "pattern": "MVVM",
+    "viewmodel": "TerminalViewModel",
+    "state_management": "StateFlow<TerminalState>",
+    "rules": [
+      "No business logic in UI",
+      "Lifecycle-aware coroutine scopes",
+      "Survive configuration changes",
+      "No memory leaks"
+    ]
+  },
+  "jni_requirements": {
+    "files": ["terminal_jni.cpp", "CMakeLists.txt"],
+    "features": [
+      "Thread-safe pipe handling",
+      "Error propagation to Kotlin",
+      "Process cleanup",
+      "Resize support"
+    ]
+  },
+  "performance_constraints": [
+    "No blocking on main thread",
+    "Use Dispatchers.IO for IO",
+    "Efficient buffer streaming",
+    "Minimal memory footprint"
+  ],
+  "deliverables": [
+    "Full folder structure",
+    "All Kotlin files",
+    "All C++ files",
+    "JNI bridge implementation",
+    "CMake configuration",
+    "Gradle dependencies",
+    "MainActivity implementation",
+    "Explanation of module wiring"
+  ],
+  "focus": "Terminal system only. No editor, Git, debugger, or future IDE modules."
+}
