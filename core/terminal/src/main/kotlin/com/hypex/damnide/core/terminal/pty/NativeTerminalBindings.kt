@@ -8,16 +8,16 @@ internal object NativeTerminalBindings {
         System.loadLibrary("terminal_native")
     }.isSuccess
 
-    private external fun nativeStartShell(rootfsPath: String): Int
+    private external fun nativeStartShell(prootBinaryPath: String, args: Array<String>): Int
     private external fun nativeWrite(masterFd: Int, input: String)
     private external fun nativeResize(masterFd: Int, cols: Int, rows: Int)
     private external fun nativeStop(childPid: Int)
     private external fun nativeChildPid(masterFd: Int): Int
     private external fun nativeLastError(): String?
 
-    fun startShell(rootfsPath: String): Int {
+    fun startShell(prootBinaryPath: String, args: Array<String>): Int {
         if (!isNativeLoaded) return -1
-        return nativeStartShell(rootfsPath)
+        return nativeStartShell(prootBinaryPath, args)
     }
 
     fun write(masterFd: Int, input: String) {

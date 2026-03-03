@@ -1,0 +1,3 @@
+#!/system/bin/sh
+echo "Missing bundled proot-aarch64 binary. Replace this placeholder with a real proot build."
+exit 127

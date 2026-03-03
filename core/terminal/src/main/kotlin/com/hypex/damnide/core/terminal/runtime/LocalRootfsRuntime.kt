@@ -1,15 +1,19 @@
 package com.hypex.damnide.core.terminal.runtime
 
+import android.content.Context
 import com.hypex.damnide.core.terminal.pty.NativeTerminalBridge
+import com.hypex.damnide.core.terminal.utils.RootfsManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import java.io.File
 
 class LocalRootfsRuntime(
+    context: Context,
     private val bridge: NativeTerminalBridge,
 ) : TerminalRuntime {
-    private val allowedRootPrefix = "/data/user/0/com.hypex.damnide/files/"
+    private val appContext = context.applicationContext
+    private val rootfsManager = RootfsManager(appContext)
 
     override suspend fun start(rootfsPath: String): Result<String> = withContext(Dispatchers.IO) {
         val root = File(rootfsPath)
@@ -18,12 +22,18 @@ class LocalRootfsRuntime(
         }
 
         val normalizedPath = root.canonicalPath
-        if (!normalizedPath.startsWith(allowedRootPrefix)) {
+        val internalRoot = appContext.filesDir.canonicalPath
+        if (!normalizedPath.startsWith(internalRoot)) {
             return@withContext Result.failure(
                 IllegalArgumentException("Rootfs must be inside app internal storage."),
             )
         }
-        val started = bridge.startShell(normalizedPath)
+
+        val (prootBinaryPath, args) = rootfsManager.getProotCommand(normalizedPath).getOrElse {
+            return@withContext Result.failure(it)
+        }
+
+        val started = bridge.startShell(prootBinaryPath, args)
         if (!started) {
             val message = bridge.lastError() ?: "Failed to start terminal shell."
             return@withContext Result.failure(IllegalStateException(message))

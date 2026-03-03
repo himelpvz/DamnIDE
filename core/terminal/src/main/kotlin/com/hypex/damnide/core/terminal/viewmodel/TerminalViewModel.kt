@@ -23,7 +23,7 @@ import java.io.File
 class TerminalViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
-    private val runtime: TerminalRuntime = LocalRootfsRuntime(NativeTerminalBridge())
+    private val runtime: TerminalRuntime = LocalRootfsRuntime(application, NativeTerminalBridge())
     private val parser: AnsiParser = AnsiParser()
 
     private val _state = MutableStateFlow(TerminalState())
